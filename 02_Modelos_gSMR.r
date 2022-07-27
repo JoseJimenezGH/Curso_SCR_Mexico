@@ -1,7 +1,7 @@
 #==============================================================================#
 #                                                                              #
 #             MARCAJE-REAVISTAMIENTO ESPACIAL GENERALIZADO (gSMR)              #
-#                       José Jiménez (CSIC-IREC)                               #
+#                       JosÃ© JimÃ©nez (CSIC-IREC)                               #
 #                         19/07/2022 22:38:14                                  #
 #                                                                              #
 #==============================================================================#
@@ -15,14 +15,14 @@ library(mcmcOutput)
 library(scrbook)
 source("SCR_functions.R")
 
-## Ubicación de los 9 dispositivos de captura (coordenadas)
+## UbicaciÃ³n de los 9 dispositivos de captura (coordenadas)
 xmn <- 3
 xm0 <- seq(0.45, 0.55, length=xmn)
 xm <- cbind(rep(xm0, each=xmn), rep(xm0, times=xmn))
 str(xm)
 
 
-## Ubicación de los 36 dispositivos de re-avistamiento (coordenadas)
+## UbicaciÃ³n de los 36 dispositivos de re-avistamiento (coordenadas)
 xrn <- 6
 xr0 <- seq(0.2, 0.80, length=xrn)
 xr <- cbind(rep(xr0, each=xrn), rep(xr0, times=xrn))
@@ -83,9 +83,9 @@ sum(n)
 # Ploteamos las capturas
 dev.new(width=7, height=7.5)
 plot(xm, pch="+", xlim=xlim, ylim=ylim, xlab="X", ylab="Y", asp=1)
-points(xr, pch=3)  # Dispositivos sw reavistamiento (cámaras-trampa)
+points(xr, pch=3)  # Dispositivos sw reavistamiento (cÃ¡maras-trampa)
 rect(xlim[1], ylim[1], xlim[2], ylim[2], lty=3)
-points(s, pch=1, cex=1.5, col="red")  # Ubicación de los centros de actividad (CA)
+points(s, pch=1, cex=1.5, col="red")  # UbicaciÃ³n de los centros de actividad (CA)
 points(s[marked,], pch=16, cex=1.5, col="red") # CA de marcados
 points(xr, cex=n, pch=16, col=rgb(0,0,1,0.2)) # Algunos marcados y otros no
 
@@ -93,11 +93,11 @@ points(xr, cex=n, pch=16, col=rgb(0,0,1,0.2)) # Algunos marcados y otros no
 ## Aumentado de datos
 M <- 200
 
-## Preparación de datos de marcaje
+## PreparaciÃ³n de datos de marcaje
 ym.aug <- array(0L, c(M, Jm))
 ym.aug[1:nrow(ym.obs),] <- ym.obs
 
-## Preparación de datos de reavistamiento
+## PreparaciÃ³n de datos de reavistamiento
 yr.aug <- array(0L, c(M, Jr))
 yr.aug[1:nrow(yr.obs),] <- yr.obs
 
@@ -115,39 +115,47 @@ code <- nimbleCode({
     s[i,1] ~ dunif(xlim[1], xlim[2])
     s[i,2] ~ dunif(ylim[1], ylim[2])
     z[i] ~ dbern(psi)
-    # Distancia desde trampas de marcaje a centros de actividad
-    d2m[i,1:Jm] <- (s[i,1]-xm[1:Jm,1])^2 + (s[i,2]-xm[1:Jm,2])^2
-    pm[i,1:Jm] <- p0m*exp(-d2m[i,1:Jm]/sig2)*z[i]
-    # Distancia desde cámaras-tarmpa a centros de actividad
-    d2r[i,1:Jr] <- (s[i,1]-xr[1:Jr,1])^2 + (s[i,2]-xr[1:Jr,2])^2
+    # DetecciÃ³n en trampas de marcaje
+    pm[i,1:Jm] <- GetDetectionRate(s = s[i,1:2], X = xm[1:Jm,1:2], J=Jm, sigma=sig, lam0=p0m, z=z[i])
+    # DetecciÃ³n en cÃ¡maras-trampa
+    lamr[i,1:Jr] <- GetDetectionRate(s = s[i,1:2], X = xr[1:Jr,1:2], J=Jr, sigma=sig, lam0=lam0r, z=z[i])
 
     ## Datos en las ocasiones de marcaje (para N latente)
     for(j in 1:Jm) {  
       ym[i,j] ~ dbinom(pm[i,j],KTm)
-    }
-    
-    ## Datos en las ocasiones de reavistamiento (para N latente)
-    for(j in 1:Jr) {
-      lamr[i,j] <- lam0r*exp(-d2r[i,j]/sig2)*KTr
     }
   }
 
   ## Datos en las ocasiones de reavistamiento de marcados (1:nMarked)
   for(i in 1:nMarked) {
     for(j in 1:Jr) {
-      yr[i,j] ~ dpois(lamr[i,j]*z[i]) # Aquí z se aplica a 1:nMarked
+      yr[i,j] ~ dpois(lamr[i,j]*KTr) # AquÃ­ z se aplica a 1:nMarked
     }
   }
 
   ## Conteo de animales no marcados (desde n:Marked hasta N latente)
   for(j in 1:Jr) {
-    # Si podemos suponer que no hay variación temporal, sumamos:
-    Lam[j] <- sum(lamr[((nMarked+1):M),j]*z[(nMarked+1):M])# z desde nMarked:M
-    n[j] ~ dpois(Lam[j])
+    # Si podemos suponer que no hay variaciÃ³n temporal, sumamos:
+    Lam[j] <- sum(lamr[((nMarked+1):M),j]) # lamr desde nMarked:M
+    n[j] ~ dpois(Lam[j]*KTr)
   }
 
   N <- sum(z[1:M])
 })
+
+# FunciÃ³n para calcular el ratio de detecciÃ³n, but omitiÃ©ndolo cuando z=0
+GetDetectionRate <- nimbleFunction(
+  run = function(s = double(1), lam0=double(0), sigma=double(0), 
+                 X=double(2), J=double(0), z=double(0)){ 
+    returnType(double(1))
+    if(z==0) return(rep(0,J))
+    if(z==1){
+     d2 <- ((s[1]-X[1:J,1])^2 + (s[2]-X[1:J,2])^2)
+     ans <- lam0*exp(-d2/(2*sigma^2))
+     return(ans)
+    }
+  }
+)
 
 source("sSampler.R")
 
