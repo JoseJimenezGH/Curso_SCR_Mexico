@@ -1,7 +1,7 @@
 #==============================================================================#
 #                                                                              #
 #                    CAPTURA-RECAPTURA ESPACIAL (SCR)                          #
-#                       José Jiménez (CSIC-IREC)                               #
+#                       JosÃ© JimÃ©nez (CSIC-IREC)                               #
 #                         19/07/2022 22:38:14                                  #
 #                                                                              #
 #==============================================================================#
@@ -13,10 +13,10 @@ library(coda)
 library(mcmcOutput)
 library(nimble)
 
-## Simulación de datos
-N <- 50  # Tamaño de población
+## SimulaciÃ³n de datos
+N <- 50  # TamaÃ±o de poblaciÃ³n
 K <- 15  # Ocasiones de muestreo
-J <- 100 # número de trampas
+J <- 100 # nÃºmero de trampas
 
 data <- SimSCR0(N=N, K=K, array3d = TRUE, discard0=TRUE, rnd=2013)
 
@@ -43,7 +43,7 @@ y <- apply(y3d,c(1,2),sum); sum(y)
 yaug<-array(0,c(M,J))
 yaug[1:nind,]<-y
 
-# Ploteamos los capturados vs no capturados (puntos sólidos vs círculos)
+# Ploteamos los capturados vs no capturados (puntos sÃ³lidos vs cÃ­rculos)
 plot(X, xlim=xlim, ylim=ylim, pch="+", asp=TRUE)
 points(S, pch=1, col="red", cex=1.5)
 captured<-apply(y3d,1,sum)
@@ -64,9 +64,9 @@ spiderplotJJ4(y3d, X, buffer=2, lwd=2)
 ## definimos el modelo
 code <- nimbleCode({
   
-  p0 ~ dbeta(1,1)
+  p0 ~ dunif(0,1)
   sigma ~ dunif(0,10)
-  psi ~ dunif(0,1)
+  psi ~ dbeta(1,1)
   
   for(i in 1:M){
     z[i] ~ dbern(psi) 
@@ -78,7 +78,7 @@ code <- nimbleCode({
     for(j in 1:J){
       y[i,j] ~ dbinom(p[i,j],K)
       #y[i,j] ~ dpois(p[i,j]*K) # Alternativamente podemos usar una
-                                # distribución de Poisson para trabajar
+                                # distribuciÃ³n de Poisson para trabajar
                                 # con conteos
     }
   }
@@ -88,8 +88,8 @@ code <- nimbleCode({
 
 str(constants <- list(M=M,        # aumentado de datos 
                       K=K,        # ocasiones de muestreo
-                      J=J,        # número de trampas
-                      area=area)) # área del espacio de estados
+                      J=J,        # nÃºmero de trampas
+                      area=area)) # Ã¡rea del espacio de estados
 
 str( data   <-   list(y=yaug,     # matriz de capturas reducida sobre K
                       X=X,        # matriz de coordenadas de las trampas
@@ -104,11 +104,11 @@ for(i in 1:nind){
 }
 zd<-c(rep(1, nind), rbinom((M-nind),1,0.2))
 
-str( inits   <-  list(p0=runif(1,0,1),    # probabilidad basal de detección
-                      sigma=runif(1,0,2), # parametrización de sigma
-                      psi=runif(1,0,1),   # parámetro de aumentado de datos
+str( inits   <-  list(p0=runif(1,0,1),    # probabilidad basal de detecciÃ³n
+                      sigma=runif(1,0,2), # parametrizaciÃ³n de sigma
+                      psi=runif(1,0,1),   # parÃ¡metro de aumentado de datos
                       s=sst,              # ubicaciones de inicio
-                      z=zd))              # está o no en la población
+                      z=zd))              # estÃ¡ o no en la poblaciÃ³n
 
 params <- c('N', 'D', 'sigma','psi', 'p0','s','z')
 
@@ -140,7 +140,7 @@ start.time2<-Sys.time()
 outNim <- runMCMC(CompMCMC, niter = ni , nburnin = nb , nchains =  nc,inits=inits,
                   setSeed = FALSE, progressBar = TRUE, samplesAsCodaMCMC = TRUE)
 end.time<-Sys.time()
-end.time-start.time2 # tiempo de ejecución
+end.time-start.time2 # tiempo de ejecuciÃ³n
 
 # Resultados
 summary(outNim[,c('N','D','p0','psi', 'sigma')])
@@ -151,7 +151,7 @@ diagPlot(outNim[,c('N','p0','psi', 'sigma')])
 
 gelman.diag(outNim[,c('N','p0','psi', 'sigma')], multivariate = FALSE)
 
-cat("Población que simulamos = ", N, "individuos", "\n")
+cat("PoblaciÃ³n que simulamos = ", N, "individuos", "\n")
 cat("lambda0 simulada  = ", p0, "\n")
 cat("sigma simulada  = ", sigma, "\n")
 cat("Datos recogidos = ", sum(y), "foto-capturas", "\n")
@@ -159,7 +159,7 @@ cat("Datos recogidos = ", sum(y), "foto-capturas", "\n")
 
 samplesn<-data.matrix(outNim)
 
-# Coeficiente variación
+# Coeficiente variaciÃ³n
 sd(samplesn[,2])/mean(samplesn[,2])
 
 # Histograma
@@ -167,7 +167,7 @@ hist(samplesn[,2], col="grey90")
 
 ################################################################################
 
-# VISUALIZACIÓN ESPACIAL
+# VISUALIZACIÃ“N ESPACIAL
 #========================
 mco <- mcmcOutput(outNim)
 s1<-mco$s[,,1] ; Sx<-as.matrix(s1)
